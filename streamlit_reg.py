@@ -162,19 +162,19 @@ def model_training(SX_train, y_train, num_estimators,max_depth, learning_rate, s
     y_pred = xgb.predict(SX_train)
     residus = y_train - y_pred
     scores = xgb.score(SX_train,y_train)
-    st.metric(label = "Score" , value = scores.round(3))
+    st.metric(label = "Score r2" , value = scores.round(3))
         
     return model, y_pred, residus, scores
 
-Go = st.sidebar.button("Lancement de l'entraînement")
-
-if Go:
-    modele = model_training(SX_train, y_train, num_estimators,max_depth, learning_rate, Subsample, reg_lambda, reg_alpha, min_child_weight, colsample_bytree, min_split_loss)
+#Go = st.sidebar.button("Lancement de l'entraînement")
+#if Go:
+modele = model_training(SX_train, y_train, num_estimators,max_depth, learning_rate, Subsample, reg_lambda, reg_alpha, min_child_weight, colsample_bytree, min_split_loss)
         
 # Représentation graphique  et dataframe des résidus : 
     
 with st.expander("Dataframe avec prédiction et résidus + historgramme des résidus"):
-    
+    st.write(X_train.shape)
+ 
     X_train['y_train']= y_train 
     X_train["Résidus"]=modele[2]
     X_train["Prédictions"]= modele[1]
@@ -205,14 +205,8 @@ fig.add_trace(go.Scatter(x=X_train["y_train"],
     
 #fig.add_trace(go.scatter(x=X_train['y_train'], y=X_train['y_train'],
  #                   mode='markers', name='markers'))
-
 st.plotly_chart(fig)
        
-    
-
-
-
-
 # Tuto Shap : 
 #titre_tuto = st.sidebar.subheader("Tutoriel pour comprendre les valeurs de Shapley")
 #st.subheader("Tutoriel pour comprendre les valeurs de Shapley")
@@ -233,6 +227,11 @@ def shap_vals(_model,X):
     return explainer, shap_values #, df_shap
 
 #st.write(SX_train)
+st.write(SX_train.shape)
+X_train2 = X_train.iloc[0: , 0:-3]
+st.write(X_train2.shape)
+
+SX_train = pd.DataFrame(SX_train, columns = list(X_train2.columns))
 
 explainer = shap_vals(modele[0], SX_train)[0]
 shap_values = shap_vals(modele[0], SX_train)[1]
@@ -241,146 +240,102 @@ shap_values = shap_vals(modele[0], SX_train)[1]
 #st.write(shap_values.values)
 #st.write(list(X.columns))
 df_shap = pd.DataFrame(shap_values.values, columns = list(X.columns))
-st.dataframe(df_shap)
+with st.expander("df des valeurs de shapley"): 
+    st.dataframe(df_shap)
+
+
+
+
+# GRAHPIQUES D'INTERPRETATION 
+
 
 st.subheader("Interprétation du modèle")
 
 import matplotlib.pyplot as plt
 shap.plots.initjs()
-
 shap.initjs()
 
 
-with st.container():
-   st.header("Vue d'ensemble des prédictions")
-   # Force plot global 
+
+# GARPHIQUE 1: VUE SYNOPTIQUE 
+
+with st.expander("Vue d'ensemble des prédictions"):
+    # Force plot global 
    st_shap(shap.force_plot(explainer.expected_value, shap_values.values, SX_train), height=400, width=1000)
 
 
-st.header("TEST")
-st_shap(shap.plots.force(shap_values[0]))
+
+# GRAPHIQUE 2 : GLOBALE
+with st.expander("Interpétation Globale du modèle 2 : le poids des variables"):
+    # summarize the effects of all the features
+    st_shap(shap.plots.beeswarm(shap_values))
+    st_shap(shap.plots.bar(shap_values))
 
 
-fig, ax = plt.subplots()
-  
-pays = X_train.T.columns
-
-option_force_plot = st.sidebar.selectbox('Je sélectionne :', options = range(len(pays)), format_func = lambda i: X_train.index[i])
-
-
-ax.set_title(f"{X_train.index}")
-pi = shap.force_plot(explainer.expected_value, shap_values.values[option_force_plot, :], X_train.iloc[option_force_plot,:])#,ax= ax,show=False) 
-st_shap(pi)  
-  
-
-# Affichage de la prédiction
-
-col1, col2 = st.columns(2)
-col1.metric("Valeur réèlle",data['EBE'][option_force_plot])
-col2.metric("Erreur de prédiction", (data['EBE'][option_force_plot]-modele.predict(features)[option_force_plot]).round(2))
-  
-fig, ax = plt.subplots()
- 
-concession_2 = features.T.columns
-
-option_force_plot_2 = st.selectbox('Je compare à :', options = range(len(concession_2)), format_func = lambda i: features.index[i])
-
-ax.set_title(f"{features.index}")
-pi_2 = shap.force_plot(explainer.expected_value, shap_values[option_force_plot_2, :], features.iloc[option_force_plot_2,:])#,ax= ax,show=False) 
-st_shap(pi_2)  
+# GRAPHIQUE 4 : LE RÔLE DES VARIABLE (DEPENDANCE PLOT)
+with st.expander("Influence relative des variables"):
+    # create a dependence scatter plot to show the effect of a single feature across the whole dataset
+    option_deplot = st.selectbox("Je sélectionne l'influence de':",options = X_train2.columns )
+    option_deplot_2 = st.selectbox(" 'Avec quelle variable voulez-vous colorer les points ?':",options = X_train2.columns )
     
+    st_shap(shap.plots.scatter(shap_values[:, option_deplot], color = shap_values[: , option_deplot_2]))
 
-col1, col2 = st.columns(2)
-col1.metric("Valeur réèlle",data['EBE'][option_force_plot_2])
-col2.metric("Erreur de prédiction", (data['EBE'][option_force_plot_2]-modele.predict(features)[option_force_plot_2]).round(2))
- 
-
-
-
-
-
-
-col1, col2 = st.columns(2)
-
-with col1:
-   
-# Nuage de dépendance
-
-    st.header("Graphique de dépendance")
- 
-    fig, ax = plt.subplots()
- 
-    # Création du bouton qui permet de sélectionner des pays   
-    option_dependance_plot = st.selectbox(
-        'De quelle variable voulez-vous visualiser l''influence?', options = features.columns)
-
-# Création du bouton qui permet de sélectionner des pays   
-    option_dependancee_plot_2 = st.selectbox(
-     'Avec quelle variable voulez-vous colorer les points ?', options = features.columns)
-
-    st.set_option('deprecation.showPyplotGlobalUse', False)
-# Add some text for labels, title and custom x-axis tick labels, etc.
-    ax.set_title(f"Influence de la variable '{option_dependance_plot}' de choix sur les prédictions")
-
-    st_shap(shap.dependence_plot(option_dependance_plot, shap_values, features, interaction_index = option_dependancee_plot_2 , ax= ax,show=False))
-
-
-
-with col2:
-# importance des caractéristiques pour le modèle
-    st.header("Graphique résumant l'importance globale des variables pour le modèle")
-
-    fig, ax = plt.subplots()
-    st_shap(shap.summary_plot(shap_values, features, plot_type="bar"))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Entraîner le modèle sur le jeu de test. 
-
+# GRAPHIQUE 4 : LOCALE 
+    
+with st.expander("Interprétation locale"):
+    option_waterfall = st.selectbox('Je sélectionne:', options = range(len(X_train2.T.columns)), format_func = lambda i: X_train.index[i])
+    
+    st_shap(shap.plots.waterfall(shap_values[option_waterfall]))
+    st_shap(shap.plots.force(shap_values[option_waterfall]))
+    
+    st.metric(label = "Valeur réèlle", value = data[y_col][option_waterfall])
+    st.metric(label = "Erreur de prédiction", value = X_train["Résidus"][option_waterfall].round(2))
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+# Entraîner le modèle sur le jeu de test.
 if st.sidebar.button("Evaluation du modèle sur le jeu de test"):
-    scores_test = modele.score(SX_test, y_test)
-    st.metric(label = "Score sur le jeu de test", value = scores_test)
-    
-    
-# Réentraîner le modèle sur l'ensemble du jeu de données et sauvergarde du modèle. 
-
+   scores_test = modele.score(SX_test, y_test)
+   st.metric(label = "Score sur le jeu de test", value = scores_test)
+  
+  
+# Réentraîner le modèle sur l'ensemble du jeu de données et sauvergarde du modèle.
 if st.sidebar.button("Je réentraîne le modèle sur l'ensemble du jeu de données."):
-    sc = StandardScaler()
-    X_sc = sc.fit_transform(X)
-    modele = modele.fit(X,y)
-    st.metric(labe = "Score sur le jeu de test", value = modele.score(X,y))
-
-
+   sc = StandardScaler()
+   X_sc = sc.fit_transform(X)
+   modele = modele.fit(X,y)
+   st.metric(labe = "Score sur le jeu de test", value = modele.score(X,y))
 nom = st.sidebar.text_input(label = "Je nomme et sauvegarde mon modèle", value = "")
-    
+  
 if nom:
-    import joblib
+   import joblib
 # save
-    joblib.dump(modele, "{nom}.pkl") 
-               
+   joblib.dump(modele, "{nom}.pkl")
+             
 #st.download_button(label="Je télécharge le modèle",
 #    data=,
 #    file_name= "{nom}.pkl")
-
-    
-    
-
-
-
-
-
+  
+  
 # Affichage de l'application
 #if st.button("Réinitialiser"):
 #   st.caching.clear_cache()
+
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
