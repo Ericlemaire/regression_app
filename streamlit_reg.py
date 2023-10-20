@@ -59,9 +59,12 @@ st.title("Analyse de Données et Modélisation")
 # 1) Chargement des données
 uploaded_file = st.file_uploader(
     "Télécharger un fichier de données (CSV)", type=["csv"])
+
 if uploaded_file is not None:
     data = pd.read_csv(uploaded_file)
 
+
+    
     # 2) Affichage des données (optionnel)
     if st.sidebar.checkbox("Afficher les données"):
         st.dataframe(data)
@@ -89,7 +92,7 @@ def Split(X, y, test_size):
 
 test_size=st.sidebar.slider("Proportion du jeu de test", 0.1, 0.5, 0.2)
 
-S = st.checkbox("Je crée je jeu d'entraînement")
+S = st.sidebar.checkbox("Je crée je jeu d'entraînement")
 if S: 
     Splittage = Split(X,y,test_size)
 X_train = Splittage[0]
@@ -119,6 +122,21 @@ if standardize:
 
 
 
+# Slider permettant de régler le nombre de Folds (Plis): 
+plis = st.sidebar.slider(label= "Nombre de plis pour la validation croisée", 
+                         min_value= 0, 
+                         max_value= 10, 
+                         value= 5, 
+                         step=1 
+                         )
+
+train_size0 = st.sidebar.slider(label="partition du jeu d'entraînement", 
+                                min_value=0.1,
+                                max_value=1.0, 
+                                value=0.8, 
+                                step=0.05
+    )
+
 # Réglage du modèle XGBoost : 
 # AJOUTER un lien vers la documentation de l'algorithme. 
 
@@ -140,6 +158,80 @@ reg_alpha = st.sidebar.slider("Reg_alpha", min_value=0.0 , max_value=10.0**3, va
 # On pourrait également ajouter une note (i) afin d'aiguiller le réglage. 
 
 
+
+
+
+
+
+
+
+# Dictionnaire d'hyperparamètres : 
+
+param = {
+    'n_estimators':[num_estimators],
+    'max_depth': [max_depth], 
+    'learning_rate':[learning_rate], 
+    'subsample': [Subsample], 
+    'reg_lambda': [reg_lambda], 
+    'reg_alpha': [reg_alpha],
+    'min_child_weight': [min_child_weight],
+    'colsample_bytree': [colsample_bytree], 
+    'min_split_loss': [min_split_loss] 
+    }
+
+
+from sklearn.model_selection import ShuffleSplit
+
+
+cv = ShuffleSplit(n_splits = plis, 
+                  train_size = train_size0, 
+                  random_state=0
+                  )
+
+
+# Fonction d'entraînement alternative  avec GridSearchCV : 
+
+from sklearn.model_selection import GridSearchCV
+resultats = []
+
+@st.cache_data
+def model_training_grid(_model, X, y_train, param, _cv, random_state=0): 
+    
+    #scoring = {"R2": "r2", "MSE": "neg_mean_squared_error"}
+        # instanciation de la grille 
+    grid = GridSearchCV(_model, param, cv = _cv, scoring = "r2", refit = True, n_jobs = -1)
+        # Entrainement
+    grid.fit(X, y_train)
+    y_pred = grid.predict(X)
+    resultats.append(grid.cv_results_)
+    
+    residus = y_train - y_pred
+    param_m = grid.get_params(deep=True)
+    
+    st.metric(label = "Score r2" , value = grid.score(X, y_train).round(2))
+
+    
+    return grid.cv_results_, y_pred, residus, param_m
+
+
+
+
+xgb1 = XGBRegressor()
+
+modele = model_training_grid(xgb1, SX_train, y_train, param, cv)
+
+# predictions = model_training_grid(xgb1, SX_train, y_train, param, cv)[1]
+# residus = model_training_grid(xgb1, SX_train, y_train, param, cv)[2]
+# param_m = model_training_grid(xgb1, SX_train, y_train, param, cv)[3]
+
+
+# Création et affichage du dataframe résumant l'entraînement : 
+resultats = pd.DataFrame(resultats)
+st.subheader("Résultats")
+st.dataframe(resultats)
+  
+
+           
 # Entraînement du modèle : 
     
 @st.cache_data
@@ -168,7 +260,7 @@ def model_training(SX_train, y_train, num_estimators,max_depth, learning_rate, s
 
 #Go = st.sidebar.button("Lancement de l'entraînement")
 #if Go:
-modele = model_training(SX_train, y_train, num_estimators,max_depth, learning_rate, Subsample, reg_lambda, reg_alpha, min_child_weight, colsample_bytree, min_split_loss)
+#modele = model_training(SX_train, y_train, num_estimators,max_depth, learning_rate, Subsample, reg_lambda, reg_alpha, min_child_weight, colsample_bytree, min_split_loss)
         
 # Représentation graphique  et dataframe des résidus : 
     
@@ -312,13 +404,22 @@ if st.sidebar.button("Je réentraîne le modèle sur l'ensemble du jeu de donné
    X_sc = sc.fit_transform(X)
    modele = modele.fit(X,y)
    st.metric(labe = "Score sur le jeu de test", value = modele.score(X,y))
+
+
+
+# SAUVEGARDE DU MODELE : 
+
+
 nom = st.sidebar.text_input(label = "Je nomme et sauvegarde mon modèle", value = "")
+path_model = st.sidebar.text_input(label = "/chemin/vers/votre/modele.pkl", value = "{nom}.pkl")
   
 if nom:
    import joblib
 # save
    joblib.dump(modele, "{nom}.pkl")
-             
+   joblib.dump(modele, path_model)
+
+
 #st.download_button(label="Je télécharge le modèle",
 #    data=,
 #    file_name= "{nom}.pkl")
