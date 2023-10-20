@@ -4,6 +4,8 @@
 Created on Tue Oct 17 10:10:18 2023
 
 @author: lemaireeric
+TO DO
+https://docs.google.com/spreadsheets/d/13fQLEwLgzeeUlJ_mEDt4CBb7MMCtqEcs_HcLctBLna8/edit#gid=0
 """
 
 # L'application ici designée doit pouvoir servir à l'accomplissement de tâche de regression
@@ -175,7 +177,7 @@ train_size0 = st.sidebar.slider(label="partition du jeu d'entraînement",
 # AJOUTER un lien vers la documentation de l'algorithme. 
 
 st.sidebar.header('Réglages du modèle')
-num_estimators = st.sidebar.slider('Nombre d\'estimateurs', min_value=100, max_value=3000, value=1500, step=100)
+num_estimators = st.sidebar.slider('Nombre d\'estimateurs', min_value=100, max_value=5000, value=100, step=50)
 max_depth = st.sidebar.slider('Profondeur maximale de l\'arbre', min_value=1, max_value=5, value=2, step=1)
 learning_rate = st.sidebar.slider('Taux d\'apprentissage', min_value=0.001, max_value=1.0, value=0.1, step=0.001)
 Subsample = st.sidebar.slider('Sous-ensemble de colonnes', min_value=0.1, max_value=1.0, value=0.5, step=0.05)
@@ -244,9 +246,10 @@ def model_training_grid(_model, X, y_train, param, _cv, random_state=0):
     param_m = grid.get_params(deep=True)
     
     st.metric(label = "Score r2" , value = grid.score(X, y_train).round(2))
+    best_model = grid.best_estimator_
 
     
-    return resultats, y_pred, residus, param_m
+    return resultats, y_pred, residus, param_m, best_model
 
 
 
@@ -361,8 +364,8 @@ X_train2 = X_train.iloc[0: , 0:-3]
 
 SX_train = pd.DataFrame(SX_train, columns = list(X_train2.columns))
 
-explainer = shap_vals(modele[0], SX_train)[0]
-shap_values = shap_vals(modele[0], SX_train)[1]
+explainer = shap_vals(modele[4], SX_train)[0]
+shap_values = shap_vals(modele[4], SX_train)[1]
 #df_shap = shap_vals(modele[0], SX_train)[2]
 
 #st.write(shap_values.values)
@@ -430,7 +433,7 @@ with st.expander("Interprétation locale"):
                 
 # Entraîner le modèle sur le jeu de test.
 if st.sidebar.button("Evaluation du modèle sur le jeu de test"):
-   scores_test = modele.score(SX_test, y_test)
+   scores_test = modele[4].score(SX_test, y_test)
    st.metric(label = "Score sur le jeu de test", value = scores_test)
   
   
@@ -438,7 +441,7 @@ if st.sidebar.button("Evaluation du modèle sur le jeu de test"):
 if st.sidebar.button("Je réentraîne le modèle sur l'ensemble du jeu de données."):
    sc = StandardScaler()
    X_sc = sc.fit_transform(X)
-   modele = modele.fit(X,y)
+   modele = modele[4].fit(X,y)
    st.metric(labe = "Score sur le jeu de test", value = modele.score(X,y))
 
 
