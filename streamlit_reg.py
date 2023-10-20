@@ -192,7 +192,7 @@ cv = ShuffleSplit(n_splits = plis,
 # Fonction d'entraînement alternative  avec GridSearchCV : 
 
 from sklearn.model_selection import GridSearchCV
-resultats = []
+#resultats = []
 
 @st.cache_data
 def model_training_grid(_model, X, y_train, param, _cv, random_state=0): 
@@ -203,7 +203,8 @@ def model_training_grid(_model, X, y_train, param, _cv, random_state=0):
         # Entrainement
     grid.fit(X, y_train)
     y_pred = grid.predict(X)
-    resultats.append(grid.cv_results_)
+#   resultats.append(grid.cv_results_)
+    resultats = grid.cv_results_
     
     residus = y_train - y_pred
     param_m = grid.get_params(deep=True)
@@ -211,10 +212,12 @@ def model_training_grid(_model, X, y_train, param, _cv, random_state=0):
     st.metric(label = "Score r2" , value = grid.score(X, y_train).round(2))
 
     
-    return grid.cv_results_, y_pred, residus, param_m
+    return resultats, y_pred, residus, param_m
 
 
 
+
+st.subheader("Résultats")
 
 xgb1 = XGBRegressor()
 
@@ -226,8 +229,7 @@ modele = model_training_grid(xgb1, SX_train, y_train, param, cv)
 
 
 # Création et affichage du dataframe résumant l'entraînement : 
-resultats = pd.DataFrame(resultats)
-st.subheader("Résultats")
+resultats = pd.DataFrame(modele[0])
 st.dataframe(resultats)
   
 
