@@ -36,25 +36,45 @@ from PIL import Image
 
 
 
+st.title("XGBoost pour la Régression")
+
+
+st.sidebar.image("logoTT.png", width=150)
+
+st.subheader("Introduction")
 """
-Désidérata:
-    1)Charger les données
-    2) Afficher les données (optionnel pour l'utilisateur')
-    3) Séparer X et y de façon sélective. et afficher le réusltat.
-    4) Création d'un jeu d'entraînement et d'un jeu de test (possibilité de régler la proportion
-    5) Standisation (multiples options)
-    6) Sélection de modèles
-    7) Sélection et réglages des hyperparamètres
-    8) Entraînement avec validation croiée (possibilité de choisir le nombre de split)
-    9) Affichages des scores.
-    10) Graphique des résidus (histogramme ou nuage de points)
-    11) Interprétation vis avec multiplies graphiques.
+   Cette application est destinée à permettre à tout utilisateur de charger des données ous format csv. Le jeu de données 
+   doit être préallablement nettoyé, encodé afin de pouvoir 
+   régler et entraîner des modèles de régression avec la librairie XGBoost. Une fois les données chargées, l'utilisation peut sélectionner les variables qui lui paraissent 
+   pertinentes pour son problème. Lorsqu'il pense avoir trouvé un modèle intéressant, ou meême au cours du processus de sélection du modèle, il peut découvrir comment 
+   les prédictions sont effectuées grâce à l'usage de la librairie SHAP. 
+   En fin de parcours, il peut sauvegarder son modèle et le charger sur son ordinateur afin de pouvoir le réutiliser aillers.'
+    """
+   
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Mode d'emploi")
+"""
+Voici les grandes étapes à suivre dans l'utilisation de cette application: '
+ 1)Charger les données
+ 2) Afficher les données (optionnel pour l'utilisateur')
+ 3) Séparer X et y de façon sélective. et afficher le réusltat.
+ 4) Création d'un jeu d'entraînement et d'un jeu de test (possibilité de régler la proportion
+ 5) Standisation (multiples options)
+ 6) Sélection de modèles
+ 7) Sélection et réglages des hyperparamètres
+ 8) Entraînement avec validation croiée (possibilité de choisir le nombre de split)
+ 9) Affichages des scores.
+ 10) Graphique des résidus (histogramme ou nuage de points)
+ 11) Interprétation vis avec multiplies graphiques.
     """
 
+with col2: 
+    st.image("icone.jpeg", width = 250)
 
 
 
-st.title("Analyse de Données et Modélisation")
 
 # 1) Chargement des données
 uploaded_file = st.file_uploader(
@@ -76,12 +96,18 @@ if uploaded_file is not None:
     y = data[y_col]
 
 with st.expander("X (Caractéristiques):"):
-
-     st.write(X)
+    if uploaded_file is not None:
+        st.write(X)
+    else:
+    
+        st.write("Chargez des données pour commencer la modélisation")
 
 with st.expander("Variable cible"):
+    if uploaded_file is not None:
+        st.write(y)
+    else: 
+        st.write("Chargez des données pour commencer la modélisation")
 
-    st.write(y)
 
     # 4) Création d'un jeu d'entraînement et d'un jeu de test
 @st.cache_data 
@@ -93,8 +119,16 @@ def Split(X, y, test_size):
 test_size=st.sidebar.slider("Proportion du jeu de test", 0.1, 0.5, 0.2)
 
 S = st.sidebar.checkbox("Je crée je jeu d'entraînement")
+
+
+
 if S: 
     Splittage = Split(X,y,test_size)
+else: 
+    st.write("Créer un jeu d'entraînement pour commencer la modélisation")
+
+
+
 X_train = Splittage[0]
 X_test = Splittage[1]
 y_train = Splittage[2] 
@@ -321,9 +355,9 @@ def shap_vals(_model,X):
     return explainer, shap_values #, df_shap
 
 #st.write(SX_train)
-st.write(SX_train.shape)
+#st.write(SX_train.shape)
 X_train2 = X_train.iloc[0: , 0:-3]
-st.write(X_train2.shape)
+#st.write(X_train2.shape)
 
 SX_train = pd.DataFrame(SX_train, columns = list(X_train2.columns))
 
