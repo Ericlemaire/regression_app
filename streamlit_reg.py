@@ -84,6 +84,8 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
     data = pd.read_csv(uploaded_file)
+else:
+   st.write("Veuillez charger un jeu de données svp !")
 
 
     
