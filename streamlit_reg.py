@@ -90,8 +90,8 @@ else:
 
     
     # 2) Affichage des données (optionnel)
-    if st.sidebar.checkbox("Afficher les données"):
-        st.dataframe(data)
+if st.sidebar.checkbox("Afficher les données"):
+    st.dataframe(data)
 
     # 3) Séparation X et y
     X_col = st.sidebar.multiselect("Choisir les colonnes pour X", data.columns)
